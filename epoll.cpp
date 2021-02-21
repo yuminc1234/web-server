@@ -23,7 +23,6 @@ void addfd(int epollfd, int fd, bool enable_et, bool one_shot) {
 
 void removfd(int epollfd, int fd) {
     epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, 0);
-    // *********************
     close(fd);
 }
 

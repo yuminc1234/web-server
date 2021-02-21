@@ -11,6 +11,7 @@ public:
     int port;
     int thread_num;
     int max_connections;
+    int close_log;
 
     Command();
     ~Command(){}

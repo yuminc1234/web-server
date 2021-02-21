@@ -13,9 +13,10 @@ int main(int argc, char *argv[]) {
     // define a server
     Server server;
     server.init(command.port, user, password, db, command.max_connections,
-          command.thread_num);
-
-   server.conn_pool();
+          command.thread_num, 0);
+	
+    server.log_write();
+    server.conn_pool();
     server.thread_pool();
 
     server.eventLoop();

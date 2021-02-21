@@ -37,17 +37,20 @@ void Request::init() {
     cgi = 0;
     mysql = NULL;
     bytes_to_send = 0;
+    timer_flag = 0;
+    improv = 0;
 
     // memset(read_buf, 0, READ_MAX_BUF);
     memset(write_buf, 0, WRITE_MAX_BUF);
 }
 
-void Request::init(int _connfd, string _root, string _user, string _password, string _db) {
+void Request::init(int _connfd, string _root, string _user, string _password, string _db, bool _close_log) {
     sockfd = _connfd;
     root = _root;
     user = _user;
     password = _password;
     db = _db;
+    is_close = _close_log;
 
     addfd(epollfd, sockfd, 1, 1);
     user_count++;
@@ -61,8 +64,6 @@ Request::LINE_STATUS Request::parse_line() {
     if (pos < 0) {
         return LINE_BAD;
     }
-    // Blank line: line = ""
-    // **********如何处理最后一个空白行*********？？？？
     line = str.substr(0, pos);
     if (str.size() >= pos + 2) {
         // Delete line from content
@@ -72,26 +73,22 @@ Request::LINE_STATUS Request::parse_line() {
 }
 
 bool Request::read() {
-	cout << "request::read()" << endl;
     int data_read;
     char read_buf[READ_MAX_BUF];
     while(1) {
         data_read = recv(sockfd, read_buf + bytes_read, READ_MAX_BUF - bytes_read, 0);
         if (data_read < 0) {
-            // EINTR：操作被信号中断
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
                 break;
             }
             return false;
         }
         if (data_read == 0) {
-            cout << "connection is closed" << endl;
             return false;
         }
         bytes_read += data_read;
     }
     content = read_buf;
-    cout << "content receive is " << content << endl;
     return true;
 }
 
@@ -100,6 +97,7 @@ Request::HTTP_CODE Request::process_read() {
     HTTP_CODE res = NO_REQUEST;
     while((check_state == CHECK_CONTENT && line_status == LINE_OK) ||
           (line_status = parse_line()) == LINE_OK) {
+	    LOG_INFO("%s", line.c_str());
         switch(check_state) {
         case CHECK_REQUESTLINE:
             res = parse_requestline();
@@ -220,7 +218,6 @@ Request::HTTP_CODE Request::parse_requestline() {
 
 Request::HTTP_CODE Request::parse_header() {
     if (line == "") {
-	    cout << "content_length is " << content_length << endl;
         if (content_length != 0) {
             check_state = CHECK_CONTENT;
             return NO_REQUEST;
@@ -240,11 +237,11 @@ Request::HTTP_CODE Request::parse_header() {
         content_length = atoi(line.substr(16).c_str());
         return NO_REQUEST;
     }
+    LOG_INFO("oop!unknown header:%s", line.c_str());
     return NO_REQUEST;
 }
 
 Request::HTTP_CODE Request::parse_content() {
-	cout << "content is " << content << endl;
     if (!content.empty()) {
         sql_login = content;
         return GET_REQUEST;
@@ -258,14 +255,8 @@ Request::HTTP_CODE Request::do_request() {
 
     // Register and login verification
     if (cgi == 1 && (url[pos + 1] == '2' || url[pos + 1] == '3')) {
-	    cout << "Register or login verification " << endl;
-       //  char flag = url[1];
-        //real_file += "/" + url.substr(2);
-	cout << "real_file is " << real_file << endl;
         string name, password;
-	cout << "sql_login is " << sql_login << endl;
         int pos1 = sql_login.find('&', 0);
-	cout << "pos1 is " << pos1 << endl;
         name = sql_login.substr(5, pos1 - 5);
         password = sql_login.substr(pos1 + 10);
         if (url[pos + 1] == '3') {
@@ -274,7 +265,6 @@ Request::HTTP_CODE Request::do_request() {
             if (!users.count(name)) {
                 pthread_mutex_lock(&sql_mutex);
                 int res = -1;
-                // CHECK ????
                 if (!users.count(name)) {
                     res = mysql_query(mysql, sql_insert.c_str());
                     users[name] = password;
@@ -428,7 +418,6 @@ bool Request::write() {
                     iv[1].iov_base = file_address + (bytes_have_send - bytes_write);
                     iv[1].iov_len = bytes_to_send;
                 } else {
-                    // bytes_to_send????
                     iv[0].iov_base = write_buf + bytes_have_send;
                     iv[0].iov_len -= bytes_have_send;
                 }
@@ -441,7 +430,6 @@ bool Request::write() {
 
         if (bytes_to_send <= 0) {
             unmap();
-            // ???
             modfd(epollfd, sockfd, EPOLLIN, 1);
             if (is_linger) {
                 init();
@@ -466,6 +454,7 @@ bool Request::add_response(const char *format, ...) {
     }
     bytes_write += len;
     va_end(arg_list);
+    LOG_INFO("request: %s", write_buf);
     return true;
 }
 
@@ -498,14 +487,9 @@ bool Request::add_content(const char *_content) {
 
 void Request::process() {
     HTTP_CODE read_res = process_read();
-    cout << "read_res" << read_res << endl;
-    cout << "url = " << url << endl;
-    cout << "method =" << method << endl;
-    cout << "version =" << version << endl;
     if (read_res == NO_REQUEST) {
         modfd(epollfd, sockfd, EPOLLIN, 1);
     }
-    cout << "request:: process_write" << endl;
     bool write_res = process_write(read_res);
     if (!write_res) {
         close_conn();
@@ -517,13 +501,13 @@ void Request::init_mysql_result(ConnectionPool *conn_pool) {
     MYSQL *mysql = NULL;
     ConnectionRAII connectionRAII(&mysql, conn_pool);
     if (mysql_query(mysql, "SELECT username, password FROM user")) {
-        cout << "mysql search error" << mysql_error(mysql) << endl;
-        // ??Check whehter return is needed
+        LOG_ERROR("SELECT error:%s",mysql_error(mysql));
         return;
     }
 
     MYSQL_RES* result = mysql_store_result(mysql);
     if (result == NULL) {
+	    LOG_INFO("%s", "empty database");
         return;
     }
 

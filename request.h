@@ -22,6 +22,7 @@
 #include "epoll.h"
 #include "connectionpool.h"
 #include "connectionraii.h"
+#include "log.h"
 
 using namespace std;
 
@@ -44,12 +45,13 @@ public:
     static int user_count;
     int state;
     MYSQL* mysql;
-
+    int timer_flag;
+    int improv;
+	bool is_close;
     Request() {}
     ~Request(){}
 
-    void init(int _connfd, string _root, string _user, string _password, string _db);
-    // ?
+    void init(int _connfd, string _root, string _user, string _password, string _db, bool _close_log);
     void close_conn(bool is_close = true);
     void process();
     void init_mysql_result(ConnectionPool* conn_pool);
