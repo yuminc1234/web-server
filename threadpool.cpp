@@ -1,8 +1,8 @@
 #include "threadpool.h"
 
 ThreadPool::ThreadPool(ConnectionPool* _conn_pool, int _thread_num, int _max_requests):
-    conn_pool(_conn_pool), thread_num(_thread_num), max_requests(_max_requests),
-    is_stop(true)
+    thread_num(_thread_num), max_requests(_max_requests), is_stop(true),
+       	conn_pool(_conn_pool)
 {
     if (thread_num <= 0 || max_requests <= 0) {
         throw exception();

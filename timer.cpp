@@ -2,10 +2,16 @@
 #include "epoll.h"
 
 TimeHeap::TimeHeap(int cap) : capacity(cap), cur_size(0), arr_id(0){
-    array = new HeapTimer*[capacity];
-    if (!array) {
+	/*
+   try {
+       	array = new (nothrow) HeapTimer*[capacity];
+   } catch(bad_alloc) {
         throw exception();
-    }
+    }*/
+	array = new (nothrow) HeapTimer*[capacity];
+	if (!array) {
+		throw exception();
+	}
     for (int i = 0; i < capacity; i++) {
         array[i] = nullptr;
     }
@@ -50,8 +56,11 @@ void TimeHeap::pop_timer() {
         return;
     }
     if (array[0]) {
+	int id = array[0]->id;
+	hash_map.erase(id);
         delete array[0];
         array[0] = array[--cur_size];
+	hash_map[array[0]->id] = 0;
         sift_down(0);
     }
 }
@@ -84,16 +93,24 @@ void TimeHeap::sift_down(int parent) {
 }
 
 void TimeHeap::resize() {
-    HeapTimer** tmp = new HeapTimer*[2 * capacity];
+	HeapTimer** tmp = new (nothrow) HeapTimer*[2 * capacity];
+	if (!tmp) {
+		throw exception();
+	}
+	/*
+	try {
+		tmp = new (nothrow) HeapTimer*[2 * capacity];
+	} catch(bad_alloc) {
+        	throw exception();
+    	}*/
+
     for (int i = 0; i < 2 * capacity; i++) {
         tmp[i] = nullptr;
-    }
-    if (!tmp) {
-        throw exception();
     }
     capacity = 2 * capacity;
     for (int i = 0; i < cur_size; i++) {
         tmp[i] = array[i];
+	tmp[i]->id = array[i]->id;
     }
     delete []array;
     array = tmp;

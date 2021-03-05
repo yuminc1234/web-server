@@ -110,6 +110,7 @@ private:
     char write_buf[WRITE_MAX_BUF];
     int bytes_write;
     int bytes_to_send;
+    int bytes_have_send;
 
     // Write responce
     char* file_address;

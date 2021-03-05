@@ -38,7 +38,7 @@ public:
 
 class TimeHeap {
 private:
-    const int TIME_SLOT = 15; // 15s
+    const int TIME_SLOT = 5; 
     HeapTimer** array;
     int capacity;
     int cur_size;
@@ -68,7 +68,7 @@ private:
     const int CAPACITY = 1000;
     // int epollfd;
 
-    Utils(){}
+    Utils():timer_heap(TimeHeap(CAPACITY)) {}
     ~Utils(){}
     Utils(const Utils&) = delete;
     Utils& operator=(const Utils&) = delete;    
@@ -76,7 +76,7 @@ private:
 public:
     static int* pipefd;
     
-    TimeHeap timer_heap = TimeHeap(CAPACITY);
+    TimeHeap timer_heap;
     static Utils* get_instance();
     void utils_init(int* _pipefd);
     void sigalrm_handler();

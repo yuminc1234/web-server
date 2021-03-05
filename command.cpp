@@ -3,7 +3,7 @@
 Command::Command()
 {
     port = 9006;
-    thread_num = 5;
+    thread_num = 8;
     max_connections = 8;
     close_log = 0;
 }

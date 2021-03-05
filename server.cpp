@@ -89,7 +89,7 @@ void Server::accept_connection() {
         users[connfd].init(connfd, root, user, password, db, is_close);
         user_timers[connfd].address = client_address;
         user_timers[connfd].sockfd = connfd;
-        HeapTimer *timer = new HeapTimer(TIME_SLOT);
+        HeapTimer *timer = new HeapTimer(3 * TIME_SLOT);
         timer->user_data = &user_timers[connfd];
         // How to modify
         timer->cb_func = cb_func;
@@ -102,7 +102,7 @@ void Server::eventLoop() {
     epollfd = epoll_create(5);
     assert(epollfd != -1);
 
-    // ET + not one shot
+    // ET
     m_listenfd = listen_bind();
     addfd(epollfd, m_listenfd, 1, 0);
     Request::epollfd = epollfd;
@@ -133,7 +133,7 @@ void Server::eventLoop() {
         for (int i = 0; i < number; i++) {
             int sockfd = events[i].data.fd;
 
-            // Receive new connection from client ?
+            // Receive connection requests from clients
             if (sockfd == m_listenfd) {
                 accept_connection();
             } else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
@@ -143,11 +143,11 @@ void Server::eventLoop() {
                 char signals[1024];
                 int ret = recv(pipefd[0], signals, sizeof (signals), 0);
                 if (ret == -1) {
-			              LOG_ERROR("%s", "dealsignal failure");
+			LOG_ERROR("%s", "dealsignal failure");
                     continue;
                 }
                 if (ret == 0) {
-			          LOG_ERROR("%s", "dealsignal failure");
+			LOG_ERROR("%s", "dealsignal failure");
                     continue;
                 }
                 for (int i = 0; i < ret; i++) {
@@ -213,7 +213,7 @@ void Server::deal_timer(HeapTimer *timer, int sockfd) {
 
 void Server::adjust_timer(HeapTimer *timer) {
 	time_t now = time(NULL);
-        timer->expire = now + TIME_SLOT;
+        timer->expire = now + 3 * TIME_SLOT;
         utils->timer_heap.adjust_timer(timer);
 	LOG_INFO("%s", "adjust timer");
 }

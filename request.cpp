@@ -37,6 +37,7 @@ void Request::init() {
     cgi = 0;
     mysql = NULL;
     bytes_to_send = 0;
+    bytes_have_send = 0;
     timer_flag = 0;
     improv = 0;
 
@@ -373,6 +374,7 @@ bool Request::process_write(HTTP_CODE res) {
             iv[1].iov_len = file_stat.st_size;
             iv_count = 2;
             bytes_to_send = bytes_write + file_stat.st_size;
+	  //  cout << "bytes_to_send in process_write: " << bytes_to_send << endl; 
             return true;
         } else {
             tmp_ok_form = "<html><body></body></html>";
@@ -395,7 +397,7 @@ bool Request::process_write(HTTP_CODE res) {
 
 // Write responce
 bool Request::write() {
-    int bytes_have_send = 0;
+   //  int bytes_have_send = 0;
     int tmp = 0;
 
     if (bytes_to_send == 0) {
@@ -406,18 +408,25 @@ bool Request::write() {
 
     while(1) {
         tmp = writev(sockfd, iv, iv_count);
-        if (tmp > 0) {
+        if (tmp >= 0) {
             bytes_have_send += tmp;
             bytes_to_send -= tmp;
+	    //cout << "tmp: " << tmp << endl;
+	    //cout << "bytes_have_send: " << bytes_have_send << endl;
+	    //cout << "bytes_to_send: " << bytes_to_send << endl;
+	    //cout << "**********************" << endl;
         }
 
-        if (tmp <= -1) {
+	else {
             if (errno == EAGAIN) {
+	//	cout << "end of write" << endl;
                 if (iv[0].iov_len <= bytes_have_send) {
+	//		cout << "end of write 1" << endl;
                     iv[0].iov_len = 0;
                     iv[1].iov_base = file_address + (bytes_have_send - bytes_write);
                     iv[1].iov_len = bytes_to_send;
                 } else {
+	//		cout << "end of write 2" << endl;
                     iv[0].iov_base = write_buf + bytes_have_send;
                     iv[0].iov_len -= bytes_have_send;
                 }

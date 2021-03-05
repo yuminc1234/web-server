@@ -18,7 +18,7 @@
 #include "timer.h"
 #include "log.h"
 
-const int MAX_EVENT_NUM = 10000;
+const int MAX_EVENT_NUM = 20000;
 const int MAX_FD = 65536;
 const int TIME_SLOT = 5;
 
