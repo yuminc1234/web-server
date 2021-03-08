@@ -71,6 +71,7 @@ void ConnectionPool::destroy_pool() {
         MYSQL *mysql = connections.front();
         connections.pop();
         mysql_close(mysql);
+	mysql_library_end();
     }
     pthread_mutex_unlock(&conn_mutex);
 

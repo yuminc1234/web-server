@@ -6,13 +6,17 @@ Server::Server() {
     getcwd(buffer, 200);
     root = (string)buffer + "/root";
     user_timers = new client_data[MAX_FD];
+    epollfd = -1;
+    m_listenfd = -1;
+    pipefd[0] = -1;
+    pipefd[1] = -1;
 }
 
 Server::~Server() {
     close(epollfd);
     close(m_listenfd);
+    close(pipefd[0]);
     close(pipefd[1]);
-    close(pipefd[2]);
     delete []users;
     delete []user_timers;
     delete pool;
@@ -42,8 +46,10 @@ void Server::init(int _port, string _user, string _password, string _db,
 }
 
 void Server::log_write() {
-  Log *log = Log::get_instance();
+	if (!is_close) {
+  	Log *log = Log::get_instance();
 	log->log_init("server_log", is_close);
+  }
 }
 
 
@@ -116,7 +122,7 @@ void Server::eventLoop() {
     // ET and not one shot???
     addfd(epollfd, pipefd[0], 1, 0);
     utils->addsig(SIGALRM, utils->sig_handler);
-    utils->addsig(SIGTERM, utils->sig_handler);
+    utils->addsig(SIGINT, utils->sig_handler);
     Utils::pipefd = pipefd;
     bool timeout = false;
     bool stop_server = false;
@@ -155,8 +161,9 @@ void Server::eventLoop() {
                     case SIGALRM:
                         timeout = true;
                         break;
-                    case SIGTERM:
-                        stop_server = true;
+		    case SIGINT:
+    			stop_server = true;
+			break;
                     }
                 }
             }

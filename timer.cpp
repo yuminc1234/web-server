@@ -59,9 +59,12 @@ void TimeHeap::pop_timer() {
 	int id = array[0]->id;
 	hash_map.erase(id);
         delete array[0];
-        array[0] = array[--cur_size];
-	hash_map[array[0]->id] = 0;
-        sift_down(0);
+	cur_size--;
+	if (cur_size > 0) {
+		array[0] = array[cur_size];
+		hash_map[array[0]->id] = 0;
+        	sift_down(0);
+	}
     }
 }
 

@@ -5,6 +5,7 @@ Log::Log() {
     getcwd(root, 250);
     strcat(root, "/log");
     log_mutex = PTHREAD_MUTEX_INITIALIZER;
+    is_close = true;
 }
 
 Log::~Log() {
@@ -35,7 +36,6 @@ bool Log::log_init(const char *_filename, bool _is_close, int _max_lines,
     max_queue_size = _max_queue_size;
     
     log_queue = new BlockQueue<string>(max_queue_size);
-    is_close = false;
 
     pthread_create(&tid, NULL, write_to_log, NULL);
 

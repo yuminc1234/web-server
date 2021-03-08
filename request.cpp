@@ -271,8 +271,10 @@ Request::HTTP_CODE Request::do_request() {
                     users[name] = password;
                 }
                 pthread_mutex_unlock(&sql_mutex);
+	//	cout << "res is " << endl;
                 // Successfully log in
-                if (!res) {
+                if (res == 0) {
+	//		cout << "name is " << name << "password is " << users[name] << endl;
                     url = "/log.html";
                 } else {
                     url = "/registerError.html";
@@ -284,7 +286,7 @@ Request::HTTP_CODE Request::do_request() {
             if (users.count(name) && users[name] == password) {
                 url = "/welcome.html";
             } else {
-                url = "/registerError.html";
+                url = "/logError.html";
             }
         }
     }
@@ -525,6 +527,9 @@ void Request::init_mysql_result(ConnectionPool *conn_pool) {
         string tmp1(row[0]);
         string tmp2(row[1]);
         users[tmp1] = tmp2;
+    }
+    if (result) {
+	    mysql_free_result(result);
     }
 }
 

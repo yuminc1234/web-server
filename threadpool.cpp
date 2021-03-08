@@ -25,9 +25,10 @@ void ThreadPool::start() {
         if ( pthread_create(&threads[i], NULL, worker, this) != 0 ) {
             throw exception();
         }
+	/*
         if ( pthread_detach(threads[i]) ) {
             throw exception();
-        }
+        }*/
     }
 }
 
@@ -37,7 +38,11 @@ void ThreadPool::stop() {
     pthread_mutex_lock(&queue_mutex);
     is_stop = true;
     pthread_cond_broadcast(&cv);
-    pthread_mutex_unlock(&queue_mutex);    
+    pthread_mutex_unlock(&queue_mutex); 
+	
+    for (int i = 0; i < thread_num; i++) {
+	     pthread_join(threads[i], NULL);
+    }	     
     pthread_mutex_destroy(&queue_mutex);
     pthread_cond_destroy(&cv);
 }
@@ -67,12 +72,12 @@ void ThreadPool::run() {
         if (request) {
             if (request->state == 0) {
                 if (request->read()) {
-                    request->improv = 1;
+			request->improv = 1;
                     ConnectionRAII connectionRAII(&request->mysql, conn_pool);
                     request->process();
                 } else {
-                    request->improv = 1;
                     request->timer_flag = 1;
+		    request->improv = 1;
                 }
             } else {
                 if (request->write()) {
